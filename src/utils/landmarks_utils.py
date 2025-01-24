@@ -1,39 +1,15 @@
 from . import setup_utils
 from . import bpy_utils
+from . import file_utils
 import bmesh
+import bpy
 from operator import attrgetter
 
 def get_hide_obj(obj):
     return (obj.hide_get() or obj.hide_viewport)
 
 
-def find_collection_in_children(collection, name):
-    ''' Recursively searches for a collection in the children of a collection'''
-    if collection.name == name:
-        return collection
-    for child in collection.children:
-        found = find_collection_in_children(child, name)
-        if found:
-            return found
 
-def get_collection(context, force_access=True, create=True):
-    '''Returns the faceit collection, if it does not exist, it creates it'''
-    collection_name = 'LH_Collection'
-    lh_collection = bpy_utils.create_colletion(collection_name)
-    if lh_collection is None:
-        if create:
-            lh_collection = bpy_utils.create_colletion(collection_name)
-        else:
-            return None
-    lh_layer_collection = bpy_utils.get_layer_collection(collection_name)
-    if lh_layer_collection is None:
-        context.scene.collection.children.link(lh_collection)
-        lh_layer_collection = bpy_utils.get_layer_collection(collection_name)
-    if force_access:
-        lh_collection.hide_viewport = False
-        lh_layer_collection.exclude = False
-        lh_layer_collection.hide_viewport = False
-    return lh_collection
 
 def set_3d_view(context):
     area = context.area
@@ -205,3 +181,31 @@ def reset_snap_settings(context):
         scene.tool_settings.use_snap_time_absolute = True
         scene.tool_settings.snap_elements_individual = {'FACE_PROJECT'}
         scene.tool_settings.use_snap_backface_culling = True
+
+
+def load_landmarks_object_from_blend(landmarks_data, lh_collection):
+    filepath = file_utils.get_landmarks_file()
+
+    with bpy.data.libraries.load(filepath) as (data_from, data_to):
+        data_to.objects = data_from.objects
+    # add the objects to the scene
+    for obj in data_to.objects:
+        if obj.type == 'MESH':
+            if landmarks_data.is_asymmetric:
+                if obj.startswith('asymmetric_facial_landmarks'):
+                    lh_collection.objects.link(obj)
+                    if obj.name in lh_collection.objects:
+                        landmarks_object = bpy_utils.get_object_from_all(name=obj.name)
+                else:
+                    bpy.data.objects.remove(obj)
+            else:
+                if obj.name.startswith('symmetric_facial_landmarks') :
+                    lh_collection.objects.link(obj)
+                    if obj.name in lh_collection.objects:
+                        landmarks_object = bpy_utils.get_object_from_all(name=obj.name)
+                else:
+                    bpy.data.objects.remove(obj)
+    
+    landmarks_object.name = 'facial_landmarks'
+    landmarks_data.landmarks_object = landmarks_object
+    return landmarks_object

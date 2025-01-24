@@ -9,3 +9,8 @@ class FACEBINDDEMO_PG_landmarks_data(bpy.types.PropertyGroup):
                     Use the manual Mirror tools instead of the Mirror modifier',
         default=False,
     )
+    landmarks_object: bpy.props.PointerProperty(
+        name="Landmarks Object",
+        type=bpy.types.Object,
+        description="Landmarks Object"
+    )

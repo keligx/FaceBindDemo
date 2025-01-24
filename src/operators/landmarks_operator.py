@@ -70,14 +70,14 @@ class FACEBINDDEMO_OT_set_landmarks(Operator):
 
     def execute(self, context):
         bpy.ops.facebinddemo.unlock_3d_view()
-        setup_data = context.scene.facebinddemo_setup_data
+        landmarks_data = context.scene.facebinddemo_landmarks_data
         self.processor = LandmarksProcessor()
         
         if context.object:
             if not landmarks_utils.get_hide_obj(context.object):  # context.object.hide_viewport == False:
                 bpy_utils.switch_mode(mode=base.MODE_OBJECT)
         # create the collection that holds faceit objects
-        lh_collection = landmarks_utils.get_collection(context)
+        lh_collection = bpy_utils.get_collection(context)
         landmarks_object = bpy_utils.get_object('facial_landmarks')
         if landmarks_object is not None:
             bpy.data.objects.remove(landmarks_object, do_unlink=True)
@@ -100,29 +100,8 @@ class FACEBINDDEMO_OT_set_landmarks(Operator):
         bpy_utils.adjuest_view()
 
         # load the landmarks object
-        filepath = file_utils.get_landmarks_file()
-        with bpy.data.libraries.load(filepath) as (data_from, data_to):
-            data_to.objects = data_from.objects
-        # add the objects to the scene
-        for obj in data_to.objects:
-            print([obj.name for obj in data_to.objects])
-            if obj.type == 'MESH':
-                if self.is_asymmetric_landmarks:
-                    if obj.startswith('asymmetric_facial_landmarks'):
-                        lh_collection.objects.link(obj)
-                        landmarks_object = bpy_utils.get_object('asymmetric_facial_landmarks')
-                    else:
-                        bpy.data.objects.remove(obj)
-                else:
-                    if obj.name.startswith('symmetric_facial_landmarks') :
-                        lh_collection.objects.link(obj)
-                        if obj.name in lh_collection.objects:
-                            landmarks_object = bpy_utils.get_object_from_all(name=obj.name)
-                        else:
-                            self.report({'ERROR'}, 'No obj')
-                    else:
-                        bpy.data.objects.remove(obj)
-        landmarks_object.name = 'facial_landmarks'
+        landmarks_object = landmarks_utils.load_landmarks_object_from_blend(landmarks_data, lh_collection)
+
         if main_obj:
             landmarks_object.location.y = landmarks_utils.get_max_dim_in_direction(
                 obj=main_obj, direction=Vector((0, -1, 0)), vertex_group_name="faceit_main")[1] - landmarks_object.dimensions[1]
@@ -383,13 +362,13 @@ class FACEBINDDEMO_OT_edit_landmarks(bpy.types.Operator):
         if context.mode != 'OBJECT':
             # if not context.object:
             #     context.view_layer.objects.active = lm
-            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy_utils.switch_mode(mode='OBJECT')
         # else:
         PivotManager.start_drawing(context)
         # bpy.ops.faceit.draw_pivot_point('INVOKE_DEFAULT')
         bpy_utils.clear_object_selection()
         bpy_utils.set_active_object(lm.name)
-        bpy.ops.object.mode_set(mode='EDIT')
+        bpy_utils.switch_mode(mode='EDIT')
 
         return {'FINISHED'}
     
@@ -406,7 +385,7 @@ class FACEBINDDEMO_OT_finish_edit_landmarks(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.faceit.unmask_main('EXEC_DEFAULT')
-        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy_utils.switch_mode(mode='OBJECT')
         return {'FINISHED'}
 
 
@@ -523,7 +502,7 @@ class FACEBINDDEMO_OT_project_landmarks(bpy.types.Operator):
         lm_obj = bpy_utils.get_object('facial_landmarks')
 
         if context.mode != 'OBJECT':
-            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy_utils.switch_mode(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
         bpy_utils.set_active_object(lm_obj.name)
         # get the main object
@@ -585,7 +564,7 @@ class FACEBINDDEMO_OT_project_landmarks(bpy.types.Operator):
             bpy.ops.facebinddemo.add_pivot_vertex('EXEC_DEFAULT', select_vertex=False)
         PivotManager.start_drawing(context, initialize=True)
         # bpy.ops.faceit.draw_pivot_point('INVOKE_DEFAULT')
-        bpy.ops.object.mode_set(mode='EDIT')
+        bpy_utils.switch_mode(mode='EDIT')
         return {'FINISHED'}
 
 class FACEBINDDEMO_OT_add_manual_pivot_vertex(bpy.types.Operator):
@@ -659,13 +638,13 @@ class FACEBINDDEMO_OT_add_manual_pivot_vertex(bpy.types.Operator):
         bm.verts.ensure_lookup_table()
         if lm_obj.mode == 'EDIT':
             bmesh.update_edit_mesh(lm_obj.data)
-            bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.ops.object.mode_set(mode='EDIT')
+            bpy_utils.switch_mode(mode='OBJECT')
+            bpy_utils.switch_mode(mode='EDIT')
         else:
             bm.to_mesh(lm_obj.data)
             bm.free()
             if lm_obj == context.active_object:
-                bpy.ops.object.mode_set(mode='EDIT')
+                bpy_utils.switch_mode(mode='EDIT')
         rig_data.eye_pivot_placement = 'MANUAL'
         PivotManager.start_drawing(context)
         rig_data.draw_pivot_locators = True
@@ -702,8 +681,8 @@ class FACEIT_OT_RemoveManualPivotVertex(bpy.types.Operator):
                 bm.verts.ensure_lookup_table()
         if lm_obj.mode == 'EDIT':
             bmesh.update_edit_mesh(lm_obj.data)
-            bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.ops.object.mode_set(mode='EDIT')
+            bpy_utils.switch_mode(mode='OBJECT')
+            bpy_utils.switch_mode(mode='EDIT')
         else:
             bm.to_mesh(lm_obj.data)
             bm.free()

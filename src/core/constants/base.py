@@ -51,6 +51,9 @@ OT_ID_PROJECT_LANDMARKS = "facebinddemo.project_landmarks"
 OT_ID_ADD_PIVOT_VERTEX = "facebinddemo.add_pivot_vertex"
 OT_ID_EDIT_LANDMARKS = "facebinddemo.edit_landmarks"
 OT_ID_FINISH_EDIT_LANDMARKS = "facebinddemo.finish_edit_landmarks"
+OT_ID_GENERATE_RIG = "facebinddemo.generate_rig"
+OT_ID_RIG_BIND = "facebinddemo.rig_bind"
+OT_ID_SMART_BIND = "facebinddemo.smart_bind"
 
 # operator label
 OT_LABEL_ADD_FACIAL_OBJECT = "Add Facial Object"
@@ -70,6 +73,11 @@ OT_LABEL_PROJECT_LANDMARKS = "Project Landmarks"
 OT_LABEL_ADD_PIVOT_VERTEX = "Add Pivot Vertex"
 OT_LABEL_EDIT_LANMARKS = "Edit Landmarks"
 OT_LABEL_FINISH_EDIT_LANDMARKS = "Finish Edit Landmarks"
+OT_LABEL_GENERATE_RIG = "Generate Rig"
+OT_LABEL_RIG_BIND = "Rig & Bind"
+OT_LABEL_SMART_BIND = "Smart Bind"
+
+
 
 # panel enum
 UI = "UI"
@@ -90,6 +98,7 @@ MODE_EDIT_GPENCIL = "EDIT_GPENCIL"
 PROP_SETUP_DATA = "facebinddemo_setup_data"
 PROP_RIG_DATA = "facebinddemo_rig_data"
 PROP_LANDMARKS_DATA = "facebinddemo_landmarks_data"
+PROP_BIND_DATA = "facebinddemo_bind_data"
 
 # attribute
 ATTR_REPORT_INFO = "report_info"

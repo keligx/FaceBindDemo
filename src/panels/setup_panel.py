@@ -310,7 +310,7 @@ class FACEBINDDEMO_OT_clear_objects(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class FACEIT_OT_remove_all_groups(bpy.types.Operator):
+class FACEBINDDEMO_OT_remove_all_groups(bpy.types.Operator):
     '''Remove Faceit group(s) from selected object'''
     bl_idname = base.OT_ID_REMOVE_ALL_GROUPS
     bl_label = base.OT_LABEL_REMOVE_ALL_GROUPS

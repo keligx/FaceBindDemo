@@ -17,7 +17,7 @@ def update_armature(self, context):
         rig_type = rig_utils.get_rig_type(self.lh_armature)
         self.faceit_armature_type = rig_type
         rig = self.lh_armature
-        if not rig.data.lh_control_bones:
+        if not self.lh_control_bones:
             # Populate the control bones list
             ctrl_bone_names = []
             if rig_type in ('RIGIFY', 'RIGIFY_NEW'):
@@ -39,7 +39,7 @@ def update_armature(self, context):
                 pass
             for b in rig.data.bones:
                 if b.name in ctrl_bone_names:
-                    ctrl_bone = rig.data.lh_control_bones.add()
+                    ctrl_bone = self.lh_control_bones.add()
                     ctrl_bone.name = b.name
 
 
@@ -67,6 +67,7 @@ def update_body_armature(self, context):
 
 
 def update_use_existing_armature(self, context):
+    setup_data = context.scene.facebinddemo_setup_data
     if self.lh_use_existing_armature:
         if not self.lh_armature:
             self.lh_armature = self.lh_body_armature
@@ -75,7 +76,7 @@ def update_use_existing_armature(self, context):
         # clear bake modifiers
         for obj_item in context.scene.face_objects:
             obj_item.modifiers.clear()
-        rig_utils.populate_bake_modifier_items(objects)
+        rig_utils.populate_bake_modifier_items(setup_data, objects)
     else:
         if self.lh_armature == self.lh_body_armature:
             self.lh_armature = None
@@ -105,15 +106,15 @@ def update_eye_bone_pivots(self, context):
 
 def update_eye_pivot_from_bone(self, context):
     if self.eye_pivot_bone_L:
-        self.eye_pivot_point_L = copy_pivot_from_bone(
+        self.eye_pivot_point_L = vertex_utils.copy_pivot_from_bone(
             self.pivot_ref_armature, self.eye_pivot_bone_L)
     else:
-        self.eye_pivot_point_L = get_eye_pivot_from_landmarks(context)
+        self.eye_pivot_point_L = vertex_utils.get_eye_pivot_from_landmarks(context)
     if self.eye_pivot_bone_R:
-        self.eye_pivot_point_R = copy_pivot_from_bone(
+        self.eye_pivot_point_R = vertex_utils.copy_pivot_from_bone(
             self.pivot_ref_armature, self.eye_pivot_bone_R)
     else:
-        self.eye_pivot_point_R = get_eye_pivot_from_landmarks(context)
+        self.eye_pivot_point_R = vertex_utils.get_eye_pivot_from_landmarks(context)
 
 
 def update_eye_pivot_options(self, context):
@@ -310,8 +311,17 @@ class FACEBINDDEMO_PG_rig_data(bpy.types.PropertyGroup):
         name='Use Jaw Pivot',
         default=False,
     )
-    miss_armature = bpy.props.BoolProperty(
+    miss_armature: bpy.props.BoolProperty(
         name='Missing Armature',
         description='The armature is missing. Did you remove it intentionally?',
+    )
+    weights_restorable: bpy.props.BoolProperty(
+        default=False,
+    )
+    expressions_restorable: bpy.props.BoolProperty(
+        default=False,
+    )
+    corrective_sk_restorable: bpy.props.BoolProperty(
+        default=False,
     )
 

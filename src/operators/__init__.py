@@ -3,12 +3,14 @@ from . import arkit_operator
 from . import landmarks_operator
 from . import rig_operator
 from . import setup_operator
+from . import bind_operator
 
 modules = [
         arkit_operator,
         landmarks_operator,
         rig_operator,
-        setup_operator
+        setup_operator,
+        bind_operator
 
     ]
 

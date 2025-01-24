@@ -5,6 +5,7 @@ from . import landmarks_data
 from . import rig_data
 from . import setup_data
 from . import interface_data
+from . import bind_data
 import bpy
 
 
@@ -14,7 +15,7 @@ modules = [
         arkit_data,
         landmarks_data,
         rig_data,
-        
+        bind_data
 
     ]
 
@@ -26,6 +27,7 @@ def register():
     bpy.types.Scene.facebinddemo_arkit_data = bpy.props.PointerProperty(type=arkit_data.FACEBINDDEMO_PG_arkit_data)
     bpy.types.Scene.facebinddemo_landmarks_data = bpy.props.PointerProperty(type=landmarks_data.FACEBINDDEMO_PG_landmarks_data)
     bpy.types.Scene.facebinddemo_rig_data = bpy.props.PointerProperty(type=rig_data.FACEBINDDEMO_PG_rig_data)
+    bpy.types.Scene.facebinddemo_bind_data = bpy.props.PointerProperty(type=bind_data.FACEBINDDEMO_PG_bind_data)
     
 def unregister():
     for module in modules:
@@ -35,4 +37,5 @@ def unregister():
     del bpy.types.Scene.facebinddemo_arkit_data
     del bpy.types.Scene.facebinddemo_landmarks_data
     del bpy.types.Scene.facebinddemo_rig_data
+    del bpy.types.Scene.facebinddemo_bind_data
 

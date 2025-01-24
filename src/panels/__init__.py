@@ -2,11 +2,13 @@ from ..utils import bpy_utils
 from . import base_panel
 from . import setup_panel
 from . import landmarks_panel
+from . import rig_panel
 
 modules = [
         base_panel,
         setup_panel,
-        landmarks_panel
+        landmarks_panel,
+        rig_panel
 
     ]
 

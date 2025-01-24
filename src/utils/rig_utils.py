@@ -1,8 +1,14 @@
+from random import randint
 import bpy
 from ..core.constants import data_list
 from mathutils import Matrix, Vector
 import numpy as np
 from ..utils import setup_utils
+from ..utils import bind_utils
+from ..utils import file_utils
+from ..utils import bpy_utils
+from ..utils import vertex_utils
+from ..utils import landmarks_utils
 
 def get_rig_type(rig):
     if rig is None:
@@ -21,7 +27,7 @@ def get_rig_type(rig):
     
 def get_faceit_armature(force_original=False):
     '''Get the faceit armature object.'''
-    rig_data = bpy.context.scene.facebinddemo_setup_data
+    rig_data = bpy.context.scene.facebinddemo_rig_data
     rig = rig_data.lh_armature
     if rig is not None and force_original is True:
         if not is_faceit_original_armature(rig):
@@ -30,7 +36,7 @@ def get_faceit_armature(force_original=False):
 
 def is_faceit_original_armature(rig):
     '''Check if the Faceit Armature is created with Faceit.'''
-    if rig.name == 'FaceitRig':
+    if rig.name == 'Rig':
         return True
     if all([b.name in data_list.BONES for b in rig.data.bones]) or rig.get('faceit_rig_id'):
         return True
@@ -41,34 +47,12 @@ def get_faceit_armature_modifier(obj, force_original=True):
     '''Get the faceit armature modifier for a specific object.'''
     rig = get_faceit_armature(force_original=force_original)
     if rig is None:
-        print("No FaceitRig found")
+        print("No Rig found")
         return
     for mod in obj.modifiers:
         if mod.type == 'ARMATURE':
             if mod.object == rig:
                 return mod
-
-def set_bake_modifier_item(mod, obj_item=None, set_bake=False, is_faceit_mod=False, index=-1):
-    '''Set properties of a modifier to a modifier item. Create a new modifier item if it doesn't exist.'''
-    setup_data = bpy.context.scene.setup_data
-    if obj_item is None:
-        obj_item = setup_data.face_objects.get(mod.id_data.name)
-        if obj_item is None:
-            return None
-    mod_item = obj_item.modifiers.get(mod.name)
-    if mod_item is None:
-        mod_item = obj_item.modifiers.add()
-    mod_item.name = mod.name
-    mod_item.type = mod.type
-    mod_item.mod_icon = data_list.MOD_TYPE_ICON_DICT.get(mod.type, 'MODIFIER')
-    mod_item.bake = set_bake
-    if index != -1:
-        mod_item.index = index
-    mod_item.is_faceit_modifier = is_faceit_mod
-    if mod.type in data_list.BAKE_MOD_TYPES:
-        mod_item.can_bake = True
-        if mod_item.bake:
-            set_bake_modifier_properties(mod, mod_item)
 
 def set_bake_modifier_properties(mod, mod_item):
     mod_item.show_viewport = mod.show_viewport
@@ -150,8 +134,8 @@ def set_bake_modifier_properties(mod, mod_item):
         mod_item.vertex_group = mod.vertex_group
         mod_item.invert_vertex_group = mod.invert_vertex_group
 
-def populate_bake_modifier_items(objects):
-    setup_data = bpy.context.scene.setup_data
+def populate_bake_modifier_items(setup_data, objects):
+    
     for obj in objects:
         obj_item = setup_data.face_objects.get(obj.name)
         if obj_item is None:
@@ -167,7 +151,7 @@ def populate_bake_modifier_items(objects):
             faceit_mods = [mod_item.name for mod_item in obj_item.modifiers if mod_item.is_faceit_modifier]
         obj_item.modifiers.clear()
         for i, mod in enumerate(obj.modifiers):
-            set_bake_modifier_item(mod, obj_item=obj_item, set_bake=mod.name in bake_mods,
+            bind_utils.set_bake_modifier_item(setup_data, mod, obj_item=obj_item, set_bake=mod.name in bake_mods,
                                    is_faceit_mod=mod.name in faceit_mods, index=i)
 
 def get_median_pos(locations):
@@ -190,4 +174,210 @@ def rig_counter(context, rig_data, setup_data):
         if body_rig_counter:
             setup_data.armature = max(body_rig_counter, key=body_rig_counter.get)
 
+def get_random_rig_id():
+    range_start = 10**4
+    range_end = (10**5) - 1
+    return randint(range_start, range_end)
 
+def load_rig_from_blend(rig_data):
+    rig_filepath = file_utils.get_rig_file()
+    faceit_collection = bpy_utils.get_collection()
+    rig = get_faceit_armature(force_original=True)
+    if rig:
+        bpy.data.objects.remove(rig)
+    # load the objects data in the rig file
+    with bpy.data.libraries.load(rig_filepath) as (data_from, data_to):
+        data_to.objects = data_from.objects
+    # add only the armature
+    for obj in data_to.objects:
+        if obj.type == 'ARMATURE' and obj.name == 'Rig':
+            faceit_collection.objects.link(obj)
+            rig = obj
+            break
+    rig['faceit_rig_id'] = get_random_rig_id()
+
+    bpy_utils.clear_object_selection()
+    bpy_utils.set_active_object(rig.name)
+
+    rig_data.lh_armature = rig
+    if rig.animation_data:
+        rig.animation_data.action = None
+    return rig
+
+def update_bone_collection():
+    rig = get_faceit_armature()
+    blender_version = bpy_utils.get_blender_version()
+    if blender_version >= (4, 0, 0):
+        face_coll = rig.data.collections["Layer 1"]
+        face_coll.name = 'Face'
+        rig.data.collections.get("Layer 2").name = 'Face (Primary)'
+        rig.data.collections.get("Layer 3").name = 'Face (Secondary)'
+        rig.data.collections["Layer 30"].name = 'DEF'
+        rig.data.collections["Layer 31"].name = 'MCH'
+        eye_master_L = rig.data.bones['master_eye.L']
+        eye_master_R = rig.data.bones['master_eye.R']
+        face_coll.assign(eye_master_L)
+        face_coll.assign(eye_master_R)
+        # remove old bone groups.
+        if blender_version >= (4, 1, 0):
+            coll_remove = []
+            for coll in rig.data.collections_all:
+                if coll.name in ['FK', 'IK', 'Special', 'Layer 32']:
+                    coll_remove.append(coll)
+            for coll in coll_remove:
+                rig.data.collections.remove(coll)
+        else:
+            coll_remove = []
+            for coll in rig.data.collections:
+                if coll.name in ['FK', 'IK', 'Special', 'Layer 32']:
+                    coll_remove.append(coll)
+            for coll in coll_remove:
+                rig.data.collections.remove(coll)
+
+def adapt_rig_scale(rig, landmarks_data, rig_data):
+    edit_bones = rig.data.edit_bones
+    landmarks = landmarks_data.landmarks_object
+    # adapt scale
+    bpy_utils.switch_mode(mode='EDIT')
+    # bones that fall too far off the rigs dimensions, hinder the scale adaption
+    bones = ['eyes', 'eye.L', 'eye.R', 'DEF-face', 'MCH-eyes_parent']
+    bone_translation = {}
+    # temporarilly move bones to center of rig (only Y Axis/ dimensions[1] matters)
+    for bone in bones:
+        bone = edit_bones.get(bone)
+        # store bone position
+        bone_translation[bone.name] = (bone.head[1], bone.tail[1])
+        # move to rig center
+        bone.head[1] = bone.tail[1] = 0
+
+    bpy_utils.switch_mode(mode='OBJECT')
+    rig.location = landmarks.location
+    rig.rotation_euler = landmarks.rotation_euler
+    # get average dimensions
+    dim_lm = landmarks.dimensions.copy()
+    avg_dim_lm = sum(dim_lm) / len(dim_lm)
+
+    dim_rig = rig.dimensions.copy()
+    avg_dim_rig = sum(dim_rig) / len(dim_rig)
+
+    scale_factor = avg_dim_lm / avg_dim_rig  # landmarks.dimensions[0] / rig.dimensions[0]
+    rig.dimensions = dim_rig * scale_factor  # rig.dimensions.copy() * scale_factor
+    bpy_utils.switch_mode(mode='EDIT')
+
+    # restore the original positions
+    for bone, pos in bone_translation.items():
+        bone = edit_bones.get(bone)
+        bone.head[1], bone.tail[1] = pos
+
+
+
+def reset_stretch(rig_obj=None, bone=None):
+    ''' reset stretch constraints '''
+    # it is important to frame_set before resetting!
+    bpy.context.scene.frame_set(1)
+
+    def reset_bones_contraints(bone):
+        for c in b.constraints:
+            if c.name == 'Stretch To':
+                c.rest_length = 0
+    if bone:
+        reset_bones_contraints(bone)
+    elif rig_obj:
+        for b in rig_obj.pose.bones:
+            reset_bones_contraints(b)
+
+def get_bone_delta(bone1, bone2) -> Vector:
+    '''returns object space vector between two pose bones'''
+    pos1 = bone1.matrix.translation
+    pos2 = bone2.matrix.translation
+    vec = pos1 - pos2
+    return vec
+
+def set_lid_follow_constraints(rig, side="L"):
+    '''Set best follow location constraint influence on the lid bones.'''
+    # All bottom lid bones
+    bot_inner_lid = rig.pose.bones.get(f"lid.B.{side}.001")
+    bot_mid_lid = rig.pose.bones.get(f"lid.B.{side}.002")
+    bot_outer_lid = rig.pose.bones.get(f"lid.B.{side}.003")
+    # All upper lid bones
+    top_outer_lid = rig.pose.bones.get(f"lid.T.{side}.001")
+    top_mid_lid = rig.pose.bones.get(f"lid.T.{side}.002")
+    top_inner_lid = rig.pose.bones.get(f"lid.T.{side}.003")
+    # Calculate a delta vector for each pair (top to bottom)
+    mid_delta = get_bone_delta(top_mid_lid, bot_mid_lid)
+    outer_lid_delta = get_bone_delta(top_outer_lid, bot_outer_lid)
+    inner_lid_delta = get_bone_delta(top_inner_lid, bot_inner_lid)
+    # Set the influence of the copy location constraint
+    outer_lid_influence = outer_lid_delta.length / mid_delta.length
+    constraint = top_outer_lid.constraints.get("Copy Location")
+    if constraint:
+        constraint.influence = outer_lid_influence
+    constraint = bot_outer_lid.constraints.get("Copy Location")
+    if constraint:
+        constraint.influence = outer_lid_influence
+    inner_lid_influence = inner_lid_delta.length / mid_delta.length
+    constraint = top_inner_lid.constraints.get("Copy Location")
+    if constraint:
+        constraint.influence = inner_lid_influence
+    constraint = bot_inner_lid.constraints.get("Copy Location")
+    if constraint:
+        constraint.influence = inner_lid_influence
+
+def set_lid_follow_constraints_new_rigify(rig, side="L"):
+    '''Set best follow location constraint influence on the lid bones.'''
+    # All bottom lid bones
+    # MCH-lid_offset.T.L.001
+    # MCH-lid_offset.T.R.001
+    bot_inner_lid = rig.pose.bones.get(f"MCH-lid_offset.B.{side}.001")
+    bot_mid_lid = rig.pose.bones.get(f"MCH-lid_offset.B.{side}.002")
+    bot_outer_lid = rig.pose.bones.get(f"MCH-lid_offset.B.{side}.003")
+    # All upper lid bones
+    top_outer_lid = rig.pose.bones.get(f"MCH-lid_offset.T.{side}.001")
+    top_mid_lid = rig.pose.bones.get(f"MCH-lid_offset.T.{side}.002")
+    top_inner_lid = rig.pose.bones.get(f"MCH-lid_offset.T.{side}.003")
+    # Calculate a delta vector for each pair (top to bottom)
+    mid_delta = get_bone_delta(top_mid_lid, bot_mid_lid)
+    outer_lid_delta = get_bone_delta(top_outer_lid, bot_outer_lid)
+    inner_lid_delta = get_bone_delta(top_inner_lid, bot_inner_lid)
+    # Set the influence of the copy location constraint
+    outer_lid_influence = outer_lid_delta.length / mid_delta.length
+    constraint = top_outer_lid.constraints.get("Copy Location.002")
+    if constraint:
+        constraint.influence = outer_lid_influence
+    constraint = bot_outer_lid.constraints.get("Copy Location.002")
+    if constraint:
+        constraint.influence = outer_lid_influence
+    inner_lid_influence = inner_lid_delta.length / mid_delta.length
+    constraint = top_inner_lid.constraints.get("Copy Location.002")
+    if constraint:
+        constraint.influence = inner_lid_influence
+    constraint = bot_inner_lid.constraints.get("Copy Location.002")
+    if constraint:
+        constraint.influence = inner_lid_influence
+        
+def get_rig_from_blend_file(context, rig_data):
+    rig_filepath = file_utils.get_rig_file()
+    lh_collection = bpy_utils.get_collection(context, create=False)
+    rig = get_faceit_armature(force_original=True)
+    if rig:
+        bpy.data.objects.remove(rig)
+    # load the objects data in the rig file
+    with bpy.data.libraries.load(rig_filepath) as (data_from, data_to):
+        data_to.objects = data_from.objects
+    # add only the armature
+    for obj in data_to.objects:
+        if obj.type == 'ARMATURE' and obj.name == 'Rig':
+            lh_collection.objects.link(obj)
+            # bpy.context.scene.collection.objects.link(obj) 
+            if obj.name in lh_collection.objects:
+                rig = bpy_utils.get_object(name=obj.name)
+            break
+    rig['faceit_rig_id'] = get_random_rig_id()
+
+    bpy_utils.clear_object_selection()
+    bpy_utils.set_active_object_by_name(rig)
+
+    rig_data.lh_armature = rig
+    if rig.animation_data:
+        rig.animation_data.action = None
+    return rig

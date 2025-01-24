@@ -5,6 +5,7 @@ from . import setup_utils
 from . import rig_utils
 import bmesh
 import numpy as np
+from mathutils import Matrix, Vector
 
 def get_weights(ob, vgroup):
     '''Generator that yields all vertex weights for the given vertex group'''
@@ -343,4 +344,35 @@ def delete_vertices_outside(bm, vids):
     if verts_delete:
         bmesh.ops.delete(bm, geom=verts_delete, context='VERTS')
 
-        
+def copy_pivot_from_bone(ref_rig, bone_name):
+    '''Get the location of the pivot from the bone'''
+    if ref_rig:
+        eye_bone = ref_rig.data.bones.get(bone_name)
+        if eye_bone:
+            pos = ref_rig.matrix_world @ eye_bone.matrix_local.to_4x4().to_translation()
+            return pos
+
+def get_eye_pivot_from_landmarks(context):
+    '''Get the location of the eye pivot from the landmarks'''
+    # place based on landmark positions
+    # Asymmetric Landmarks:
+    # ...
+    scene = context.scene
+    landmarks_obj = scene.objects.get('facial_landmarks')
+    pos = Vector((0, 0, 0))
+    if landmarks_obj:
+        mw = landmarks_obj.matrix_world
+        if scene.faceit_asymmetric:
+            pass
+        else:
+            # Symmetric Landmarks:
+            # Left Eye (mirror Right Eye):
+            # between vertex 19 and 27 on the z axis
+            # move to vertex 25 on the y axis
+            v1 = mw @ landmarks_obj.data.vertices[19].co
+            v2 = mw @ landmarks_obj.data.vertices[27].co
+            v3 = mw @ landmarks_obj.data.vertices[25].co
+            pos = (v1 + v2) / 2
+            pos.y = v3.y
+    return pos
+

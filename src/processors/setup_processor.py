@@ -142,3 +142,40 @@ class GeometryIslands:
         for island in self.get_selected_islands():
             for v in island:
                 v.select = True
+
+class SelectionIslands(GeometryIslands):
+    '''
+    Traces the graph of edges and verts to find the islands
+    @verts : bmesh vertices
+    @selection_islands : the islands of adjacent selected vertices
+    @non_selected_islands : the islands of adjacent non selected vertices
+    '''
+
+    def __init__(self, bmesh_verts, selection_state):
+        self.verts = [v for v in bmesh_verts if v.select == selection_state]
+        self.islands = self.make_islands(self.verts, selection_state)
+
+    def make_vert_paths(self, verts, selection_state):
+        # Init a set for each vertex
+        result = {v: set() for v in verts}
+        # Loop over vertices to store connected other vertices
+        for v in verts:
+            for e in v.link_edges:
+                other = e.other_vert(v)
+                if other.select == selection_state:
+                    result[v].add(other)
+        return result
+
+    def make_islands(self, bm_verts, selection_state):
+        paths = self.make_vert_paths(bm_verts, selection_state)
+        result = []
+        found = True
+        while found:
+            try:
+                # Get one input as long there is one
+                vert = next(iter(paths.keys()))
+                # Deplete the paths dictionary following this starting vertex
+                result.append(self.make_island(vert, paths))
+            except StopIteration:
+                found = False
+        return result

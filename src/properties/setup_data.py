@@ -7,6 +7,39 @@ from ..core.constants import base
 from ..utils import bpy_utils
 
 
+PROCEDURAL_EXPRESSION_ITEMS = (
+    ('NONE', 'None', 'Not a procedural expression'),
+    ('EYEBLINKS', 'EyeBlinks', 'Eye blink expressions (can affect L R or N)'),
+    ('MOUTHCLOSE', 'MouthClose', 'Jaw open, mouth closed')
+)
+
+class FACEBINDDEMO_PG_expressions(PropertyGroup):
+    '''Properties stored in each expression item'''
+    name: bpy.props.StringProperty(
+        options=set(),
+    )
+    side: bpy.props.StringProperty(
+        options=set(),
+    )
+    frame: bpy.props.IntProperty(
+        options=set(),
+    )
+    index: bpy.props.IntProperty(
+        options=set(),
+    )
+    mirror_name: bpy.props.StringProperty(
+        options=set(),
+    )
+    corr_shape_key: bpy.props.BoolProperty(
+        name='Shape Key',
+        description='Corrective Shape Key active on this expression',
+        default=False
+    )
+    procedural: bpy.props.EnumProperty(
+        name='Procedural Expression',
+        items=PROCEDURAL_EXPRESSION_ITEMS,
+    )
+
 class FACEBINDDEMO_PG_bake_mode_drivers(PropertyGroup):
     data_path: StringProperty(name='Data Path', default='')
     is_muted: BoolProperty(name='Mute', default=False)
@@ -306,4 +339,11 @@ class FACEBINDDEMO_PG_setup_data(bpy.types.PropertyGroup):
             description='', 
             type=bpy.types.Object
         )
+    
+    expression_list: bpy.props.CollectionProperty(
+        name='animation property collection',
+        description='holds all expressions',
+        type=FACEBINDDEMO_PG_expressions,
+        options=set(),
+    )
 

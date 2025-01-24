@@ -484,7 +484,7 @@ class FACEBINDDEMO_OT_assign_group(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class FACEBINDEDEMO_OT_vertex_group_picker(bpy.types.Operator):
+class FACEBINDDEMO_OT_vertex_group_picker(bpy.types.Operator):
     ''' Register the main surface. Draws an overlay to help you select the right vertices.'''
     bl_idname = base.OT_ID_VERTEX_GROUP_PICKER
     bl_label = base.OT_LABEL_VERTEX_GROUP_PICKER

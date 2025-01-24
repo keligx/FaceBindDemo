@@ -14,3 +14,7 @@ def get_addon_directory(addon_name):
 def get_landmarks_file():
     addon_dir = get_addon_directory(base.ADDON_NAME)
     return addon_dir + "/assets/Landmarks.blend"
+
+def get_rig_file():
+    addon_dir = get_addon_directory(base.ADDON_NAME)
+    return addon_dir + "/assets/Rig.blend"
